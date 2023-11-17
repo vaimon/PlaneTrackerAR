@@ -282,13 +282,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             backgroundRenderer.createOnGlThread(this@MainActivity)
             planeRenderer.createOnGlThread(this@MainActivity, getString(R.string.model_grid_png))
             pointCloudRenderer.createOnGlThread(this@MainActivity)
-
-//            // TODO - set up the objects
-//            // 1
-//            vikingObject.createOnGlThread(this@MainActivity)
-//            cannonObject.createOnGlThread(this@MainActivity)
-//            targetObject.createOnGlThread(this@MainActivity)
-
         } catch (e: IOException) {
             Log.e(TAG, getString(R.string.failed_to_read_asset), e)
         }
@@ -480,23 +473,23 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                         }
                     }.let {
                         it.createOnGlThread(this@MainActivity)
+                        for(obj in sceneObjects){
+                            if (obj.boundingBox.intersectsWith(it.boundingBox)){
+                                messageSnackbarHelper.showToast(this,getString(R.string.objects_collided))
+                                return@let
+                            }
+                        }
                         sceneObjects.add(it)
                     }
-
-                    // TODO: Create an anchor if a plane or an oriented point was hit
                     break
                 }
             }
         }
     }
 
-    // TODO: Add addSessionAnchorFromAttachment() function here
     private fun addSessionAnchorFromAttachment(
         hit: HitResult
     ): PlaneAttachment {
-//        // 1
-//        previousAttachment?.anchor?.detach()
-
         // 2
         val plane = hit.trackable as Plane
         val anchor = session!!.createAnchor(hit.hitPose)

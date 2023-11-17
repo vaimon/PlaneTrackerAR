@@ -135,6 +135,14 @@ open class ObjectRenderer(
     private val modelViewMatrix = FloatArray(16)
     private val modelViewProjectionMatrix = FloatArray(16)
 
+    private val _boundingBox = BoundingBox()
+
+    val boundingBox: BoundingBox
+        get(){
+            updateModelMatrix()
+            return _boundingBox.getModelBoundingBox(modelMatrix)
+        }
+
     /**
      * Creates and initializes OpenGL resources needed for rendering the model.
      *
@@ -206,6 +214,22 @@ open class ObjectRenderer(
         val texCoords = ObjData.getTexCoords(obj, 2)
         val normals = ObjData.getNormals(obj)
 
+        ObjData.getVerticesArray(obj).forEachIndexed { index, coordinate ->
+            when(index % 3){
+                0 -> {
+                    _boundingBox.minX = minOf(_boundingBox.minX, coordinate)
+                    _boundingBox.maxX = maxOf(_boundingBox.maxX, coordinate)
+                }
+                1 -> {
+                    _boundingBox.minY = minOf(_boundingBox.minY, coordinate)
+                    _boundingBox.maxY = maxOf(_boundingBox.maxY, coordinate)
+                }
+                2 -> {
+                    _boundingBox.minZ = minOf(_boundingBox.minZ, coordinate)
+                    _boundingBox.maxZ = maxOf(_boundingBox.maxZ, coordinate)
+                }
+            }
+        }
         // Convert int indices to shorts for GL ES 2.0 compatibility
         val indices =
             ByteBuffer.allocateDirect(2 * wideIndices.limit())
