@@ -468,22 +468,19 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 ) {
                     when (mode) {
                         Mode.VIKING -> {
-                            val vikingObject = VikingObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
-                            vikingObject.createOnGlThread(this@MainActivity)
-                            sceneObjects.add(vikingObject)
+                            VikingObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
                         }
 
                         Mode.CANNON -> {
-                            val cannonObject = CannonObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
-                            cannonObject.createOnGlThread(this@MainActivity)
-                            sceneObjects.add(cannonObject)
+                            CannonObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
                         }
 
                         Mode.TARGET -> {
-                            val targetObject = TargetObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
-                            targetObject.createOnGlThread(this@MainActivity)
-                            sceneObjects.add(targetObject)
+                            TargetObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
                         }
+                    }.let {
+                        it.createOnGlThread(this@MainActivity)
+                        sceneObjects.add(it)
                     }
 
                     // TODO: Create an anchor if a plane or an oriented point was hit
