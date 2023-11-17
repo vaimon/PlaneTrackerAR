@@ -69,10 +69,11 @@ data class Material(
  * Renders an object loaded from an OBJ file in OpenGL.
  */
 open class ObjectRenderer(
+    var planeAttachment: PlaneAttachment,
     private val objAssetName: String,
     private val diffuseTextureAssetName: String,
     private val scaleFactor: Float = 1f,
-    private val material: Material = Material()
+    val material: Material = Material(),
 ) {
 
     /**
@@ -269,13 +270,15 @@ open class ObjectRenderer(
      * @param scaleFactor A separate scaling factor to apply before the `modelMatrix`.
      * @see Matrix
      */
-    fun updateModelMatrix(modelMatrix: FloatArray?) {
+    fun updateModelMatrix() {
+        val anchorMatrix = FloatArray(16)
+        planeAttachment.pose.toMatrix(anchorMatrix, 0)
         val scaleMatrix = FloatArray(16)
         Matrix.setIdentityM(scaleMatrix, 0)
         scaleMatrix[0] = scaleFactor
         scaleMatrix[5] = scaleFactor
         scaleMatrix[10] = scaleFactor
-        Matrix.multiplyMM(this.modelMatrix, 0, modelMatrix, 0, scaleMatrix, 0)
+        Matrix.multiplyMM(this.modelMatrix, 0, anchorMatrix, 0, scaleMatrix, 0)
     }
 
     /**
@@ -333,7 +336,13 @@ open class ObjectRenderer(
         GLES20.glUniform4fv(colorUniform, 1, objColor, 0)
 
         // Set the object material properties.
-        GLES20.glUniform4f(materialParametersUniform, material.ambient, material.diffuse, material.specular, material.specularPower)
+        GLES20.glUniform4f(
+            materialParametersUniform,
+            material.ambient,
+            material.diffuse,
+            material.specular,
+            material.specularPower
+        )
 
         // Attach the object texture.
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -431,19 +440,22 @@ open class ObjectRenderer(
 
 }
 
-class VikingObject(context: Context) : ObjectRenderer(
+class VikingObject(context: Context, planeAttachment: PlaneAttachment) : ObjectRenderer(
+    planeAttachment,
     context.getString(R.string.model_viking_obj),
     context.getString(R.string.model_viking_png),
     material = Material(specular = .5f)
 )
 
-class CannonObject(context: Context) : ObjectRenderer(
+class CannonObject(context: Context, planeAttachment: PlaneAttachment) : ObjectRenderer(
+    planeAttachment,
     context.getString(R.string.model_cannon_obj),
     context.getString(R.string.model_cannon_png),
     scaleFactor = .2f
 )
 
-class TargetObject(context: Context) : ObjectRenderer(
+class TargetObject(context: Context, planeAttachment: PlaneAttachment) : ObjectRenderer(
+    planeAttachment,
     context.getString(R.string.model_target_obj),
     context.getString(R.string.model_target_png),
     scaleFactor = .5f

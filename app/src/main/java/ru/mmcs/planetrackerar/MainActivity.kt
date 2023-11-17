@@ -88,17 +88,17 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private val pointCloudRenderer: PointCloudRenderer = PointCloudRenderer()
 
     // TODO: Declare ObjectRenderers and PlaneAttachments here
-    private lateinit var vikingObject: VikingObject
-    private lateinit var cannonObject: CannonObject
-    private lateinit var targetObject: TargetObject
+//    private var vikingObject: VikingObject? = null
+//    private var cannonObject: CannonObject? = null
+//    private var targetObject: TargetObject? = null
+    private val sceneObjects: MutableList<ObjectRenderer> = mutableListOf()
 
-    private var vikingAttachment: PlaneAttachment? = null
-    private var cannonAttachment: PlaneAttachment? = null
-    private var targetAttachment: PlaneAttachment? = null
+//    private var vikingAttachment: PlaneAttachment? = null
+//    private var cannonAttachment: PlaneAttachment? = null
+//    private var targetAttachment: PlaneAttachment? = null
 
     // Temporary matrix allocated here to reduce number of allocations and taps for each frame.
     private val maxAllocationSize = 16
-    private val anchorMatrix = FloatArray(maxAllocationSize)
     private val queuedSingleTaps = ArrayBlockingQueue<MotionEvent>(maxAllocationSize)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -113,9 +113,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         displayRotationHelper = DisplayRotationHelper(this@MainActivity)
 
         installRequested = false
-        vikingObject = VikingObject(this)
-        cannonObject = CannonObject(this)
-        targetObject = TargetObject(this)
 
         setupTapDetector()
         setupSurfaceView()
@@ -170,7 +167,10 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         try {
             session?.resume()
         } catch (e: CameraNotAvailableException) {
-            messageSnackbarHelper.showError(this@MainActivity, getString(R.string.camera_not_available))
+            messageSnackbarHelper.showError(
+                this@MainActivity,
+                getString(R.string.camera_not_available)
+            )
             session = null
             return
         }
@@ -189,8 +189,10 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     installRequested = true
                     return false
                 }
+
                 InstallStatus.INSTALLED -> {
                 }
+
                 else -> {
                     message = getString(R.string.arcore_install_failed)
                 }
@@ -281,11 +283,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             planeRenderer.createOnGlThread(this@MainActivity, getString(R.string.model_grid_png))
             pointCloudRenderer.createOnGlThread(this@MainActivity)
 
-            // TODO - set up the objects
-            // 1
-            vikingObject.createOnGlThread(this@MainActivity)
-            cannonObject.createOnGlThread(this@MainActivity)
-            targetObject.createOnGlThread(this@MainActivity)
+//            // TODO - set up the objects
+//            // 1
+//            vikingObject.createOnGlThread(this@MainActivity)
+//            cannonObject.createOnGlThread(this@MainActivity)
+//            targetObject.createOnGlThread(this@MainActivity)
 
         } catch (e: IOException) {
             Log.e(TAG, getString(R.string.failed_to_read_asset), e)
@@ -329,30 +331,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 checkPlaneDetected()
                 visualizePlanes(camera, projectionMatrix)
 
-                // TODO: Call drawObject() for Viking, Cannon and Target here
-                drawObject(
-                    vikingObject,
-                    vikingAttachment,
-                    projectionMatrix,
-                    viewMatrix,
-                    lightIntensity
-                )
-
-                drawObject(
-                    cannonObject,
-                    cannonAttachment,
-                    projectionMatrix,
-                    viewMatrix,
-                    lightIntensity
-                )
-
-                drawObject(
-                    targetObject,
-                    targetAttachment,
-                    projectionMatrix,
-                    viewMatrix,
-                    lightIntensity
-                )
+                for (obj in sceneObjects){
+                    obj.drawObject(projectionMatrix,
+                        viewMatrix,
+                        lightIntensity)
+                }
             } catch (t: Throwable) {
                 Log.e(TAG, getString(R.string.exception_on_opengl), t)
             }
@@ -370,19 +353,15 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         return true
     }
 
-    private fun drawObject(
-        objectRenderer: ObjectRenderer,
-        planeAttachment: PlaneAttachment?,
+    private fun ObjectRenderer.drawObject(
         projectionMatrix: FloatArray,
         viewMatrix: FloatArray,
         lightIntensity: FloatArray
     ) {
-        if (planeAttachment?.isTracking == true) {
-            planeAttachment.pose.toMatrix(anchorMatrix, 0)
-
+        if (planeAttachment.isTracking) {
             // Update and draw the model
-            objectRenderer.updateModelMatrix(anchorMatrix)
-            objectRenderer.draw(viewMatrix, projectionMatrix, lightIntensity)
+            updateModelMatrix()
+            draw(viewMatrix, projectionMatrix, lightIntensity)
         }
     }
 
@@ -488,10 +467,25 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                             == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL)
                 ) {
                     when (mode) {
-                        Mode.VIKING -> vikingAttachment = addSessionAnchorFromAttachment(vikingAttachment, hit)
-                        Mode.CANNON -> cannonAttachment = addSessionAnchorFromAttachment(cannonAttachment, hit)
-                        Mode.TARGET -> targetAttachment = addSessionAnchorFromAttachment(targetAttachment, hit)
+                        Mode.VIKING -> {
+                            val vikingObject = VikingObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
+                            vikingObject.createOnGlThread(this@MainActivity)
+                            sceneObjects.add(vikingObject)
+                        }
+
+                        Mode.CANNON -> {
+                            val cannonObject = CannonObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
+                            cannonObject.createOnGlThread(this@MainActivity)
+                            sceneObjects.add(cannonObject)
+                        }
+
+                        Mode.TARGET -> {
+                            val targetObject = TargetObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
+                            targetObject.createOnGlThread(this@MainActivity)
+                            sceneObjects.add(targetObject)
+                        }
                     }
+
                     // TODO: Create an anchor if a plane or an oriented point was hit
                     break
                 }
@@ -501,11 +495,10 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     // TODO: Add addSessionAnchorFromAttachment() function here
     private fun addSessionAnchorFromAttachment(
-        previousAttachment: PlaneAttachment?,
         hit: HitResult
     ): PlaneAttachment {
-        // 1
-        previousAttachment?.anchor?.detach()
+//        // 1
+//        previousAttachment?.anchor?.detach()
 
         // 2
         val plane = hit.trackable as Plane
