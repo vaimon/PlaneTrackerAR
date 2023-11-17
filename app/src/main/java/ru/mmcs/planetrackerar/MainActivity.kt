@@ -45,6 +45,7 @@
 
 package ru.mmcs.planetrackerar
 
+import android.graphics.Color
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
@@ -52,6 +53,9 @@ import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.ar.core.*
@@ -74,6 +78,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private var installRequested = false
 
     private var mode: Mode = Mode.VIKING
+    private var isEditMode: Boolean = false
 
     private var session: Session? = null
 
@@ -87,15 +92,8 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private val planeRenderer: PlaneRenderer = PlaneRenderer()
     private val pointCloudRenderer: PointCloudRenderer = PointCloudRenderer()
 
-    // TODO: Declare ObjectRenderers and PlaneAttachments here
-//    private var vikingObject: VikingObject? = null
-//    private var cannonObject: CannonObject? = null
-//    private var targetObject: TargetObject? = null
     private val sceneObjects: MutableList<ObjectRenderer> = mutableListOf()
 
-//    private var vikingAttachment: PlaneAttachment? = null
-//    private var cannonAttachment: PlaneAttachment? = null
-//    private var targetAttachment: PlaneAttachment? = null
 
     // Temporary matrix allocated here to reduce number of allocations and taps for each frame.
     private val maxAllocationSize = 16
@@ -116,14 +114,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
         setupTapDetector()
         setupSurfaceView()
+        setupSpinner()
     }
 
     fun onRadioButtonClicked(view: View) {
-        when (view.id) {
-            R.id.radioCannon -> mode = Mode.CANNON
-            R.id.radioTarget -> mode = Mode.TARGET
-            else -> mode = Mode.VIKING
-        }
+        isEditMode = view.id == R.id.btnEdit
     }
 
     private fun setupSurfaceView() {
@@ -135,6 +130,25 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         binding.surfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         binding.surfaceView.setWillNotDraw(false)
         binding.surfaceView.setOnTouchListener { _, event -> gestureDetector.onTouchEvent(event) }
+    }
+
+    private fun setupSpinner(){
+        binding.spinnerObjectType.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf(getString(R.string.viking), getString(R.string.cannon), getString(R.string.target)));
+        binding.spinnerObjectType.onItemSelectedListener = object: AdapterView.OnItemSelectedListener{
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
+//                (p0?.getChildAt(0) as TextView?)?.setTextColor(Color.WHITE)
+                when(p0?.selectedItemPosition){
+                    0 -> mode = Mode.VIKING
+                    1 -> mode = Mode.CANNON
+                    2 -> mode = Mode.TARGET
+                }
+            }
+
+            override fun onNothingSelected(p0: AdapterView<*>?) {
+                p0?.setSelection(0)
+            }
+
+        }
     }
 
     private fun setupTapDetector() {
@@ -451,6 +465,10 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             // Check if any plane was hit, and if it was hit inside the plane polygon
             for (hit in frame.hitTest(tap)) {
                 val trackable = hit.trackable
+
+                if(isEditMode){
+                    break
+                }
 
                 if ((trackable is Plane
                             && trackable.isPoseInPolygon(hit.hitPose)

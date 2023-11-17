@@ -76,23 +76,6 @@ open class ObjectRenderer(
     val material: Material = Material(),
 ) {
 
-    /**
-     * Blend mode.
-     *
-     * @see .setBlendMode
-     */
-    enum class BlendMode {
-        /**
-         * Multiplies the destination color by the source alpha.
-         */
-        Shadow,
-
-        /**
-         * Normal alpha blending.
-         */
-        Grid
-    }
-
     private val viewLightDirection = FloatArray(4)
 
     // Object vertex buffer variables.
@@ -128,7 +111,6 @@ open class ObjectRenderer(
 
     // Shader location: object color property (to change the primary color of the object).
     private var colorUniform = 0
-    private var blendMode: BlendMode? = null
 
     // Temporary matrices allocated here to reduce number of allocations for each frame.
     private val modelMatrix = FloatArray(16)
@@ -278,16 +260,6 @@ open class ObjectRenderer(
     }
 
     /**
-     * Selects the blending mode for rendering.
-     *
-     * @param blendMode The blending mode. Null indicates no blending (opaque rendering).
-     */
-    @Suppress("unused")
-    fun setBlendMode(blendMode: BlendMode?) {
-        this.blendMode = blendMode
-    }
-
-    /**
      * Updates the object model matrix and applies scaling.
      *
      * @param modelMatrix A 4x4 model-to-world transformation matrix, stored in column-major order.
@@ -410,27 +382,9 @@ open class ObjectRenderer(
         GLES20.glEnableVertexAttribArray(positionAttribute)
         GLES20.glEnableVertexAttribArray(normalAttribute)
         GLES20.glEnableVertexAttribArray(texCoordAttribute)
-        if (blendMode != null) {
-            GLES20.glDepthMask(false)
-            GLES20.glEnable(GLES20.GL_BLEND)
-            when (blendMode) {
-                BlendMode.Shadow ->  // Multiplicative blending function for Shadow.
-                    GLES20.glBlendFunc(GLES20.GL_ZERO, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-
-                BlendMode.Grid ->  // Grid, additive blending function.
-                    GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-
-                else -> {}
-            }
-        }
         GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBufferId)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, 0)
         GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
-
-        if (blendMode != null) {
-            GLES20.glDisable(GLES20.GL_BLEND)
-            GLES20.glDepthMask(true)
-        }
 
         // Disable vertex arrays
         GLES20.glDisableVertexAttribArray(positionAttribute)
@@ -468,7 +422,7 @@ class VikingObject(context: Context, planeAttachment: PlaneAttachment) : ObjectR
     planeAttachment,
     context.getString(R.string.model_viking_obj),
     context.getString(R.string.model_viking_png),
-    material = Material(specular = .5f)
+    material = Material(specular = .25f, specularPower = 16f)
 )
 
 class CannonObject(context: Context, planeAttachment: PlaneAttachment) : ObjectRenderer(
