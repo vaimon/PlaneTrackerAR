@@ -65,9 +65,12 @@ import ru.mmcs.planetrackerar.common.helpers.*
 import ru.mmcs.planetrackerar.common.rendering.*
 import ru.mmcs.planetrackerar.databinding.ActivityMainBinding
 import java.io.IOException
+import java.lang.Math.pow
 import java.util.concurrent.ArrayBlockingQueue
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
@@ -93,6 +96,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private val pointCloudRenderer: PointCloudRenderer = PointCloudRenderer()
 
     private val sceneObjects: MutableList<ObjectRenderer> = mutableListOf()
+    private var selectedObjectIndex: Int? = null
 
 
     // Temporary matrix allocated here to reduce number of allocations and taps for each frame.
@@ -132,23 +136,32 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         binding.surfaceView.setOnTouchListener { _, event -> gestureDetector.onTouchEvent(event) }
     }
 
-    private fun setupSpinner(){
-        binding.spinnerObjectType.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf(getString(R.string.viking), getString(R.string.cannon), getString(R.string.target)));
-        binding.spinnerObjectType.onItemSelectedListener = object: AdapterView.OnItemSelectedListener{
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
+    private fun setupSpinner() {
+        binding.spinnerObjectType.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            listOf(
+                getString(R.string.viking),
+                getString(R.string.cannon),
+                getString(R.string.target)
+            )
+        );
+        binding.spinnerObjectType.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
 //                (p0?.getChildAt(0) as TextView?)?.setTextColor(Color.WHITE)
-                when(p0?.selectedItemPosition){
-                    0 -> mode = Mode.VIKING
-                    1 -> mode = Mode.CANNON
-                    2 -> mode = Mode.TARGET
+                    when (p0?.selectedItemPosition) {
+                        0 -> mode = Mode.VIKING
+                        1 -> mode = Mode.CANNON
+                        2 -> mode = Mode.TARGET
+                    }
                 }
-            }
 
-            override fun onNothingSelected(p0: AdapterView<*>?) {
-                p0?.setSelection(0)
-            }
+                override fun onNothingSelected(p0: AdapterView<*>?) {
+                    p0?.setSelection(0)
+                }
 
-        }
+            }
     }
 
     private fun setupTapDetector() {
@@ -338,10 +351,13 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 checkPlaneDetected()
                 visualizePlanes(camera, projectionMatrix)
 
-                for (obj in sceneObjects){
-                    obj.drawObject(projectionMatrix,
+                for (obj in sceneObjects.withIndex()) {
+                    obj.value.drawObject(
+                        projectionMatrix,
                         viewMatrix,
-                        lightIntensity)
+                        lightIntensity,
+                        obj.index == selectedObjectIndex
+                    )
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, getString(R.string.exception_on_opengl), t)
@@ -363,12 +379,18 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private fun ObjectRenderer.drawObject(
         projectionMatrix: FloatArray,
         viewMatrix: FloatArray,
-        lightIntensity: FloatArray
+        lightIntensity: FloatArray,
+        isHighlighted: Boolean
     ) {
         if (planeAttachment.isTracking) {
             // Update and draw the model
             updateModelMatrix()
-            draw(viewMatrix, projectionMatrix, lightIntensity)
+            draw(
+                viewMatrix,
+                projectionMatrix,
+                lightIntensity,
+                if (isHighlighted) ObjectRenderer.HIGHLIGHT_COLOR else ObjectRenderer.DEFAULT_COLOR
+            )
         }
     }
 
@@ -455,6 +477,10 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         return false
     }
 
+    private fun Pose.xzDistanceTo(other: Pose): Float {
+        return sqrt((tx() - other.tx()).pow(2) + (tz() - other.tz()).pow(2))
+    }
+
     /**
      * Handle a single tap per frame
      */
@@ -466,8 +492,11 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             for (hit in frame.hitTest(tap)) {
                 val trackable = hit.trackable
 
-                if(isEditMode){
-                    break
+                if (isEditMode) {
+                    selectedObjectIndex = sceneObjects.withIndex().minByOrNull {
+                        hit.hitPose.xzDistanceTo(it.value.planeAttachment.pose)
+                    }?.index
+                    return
                 }
 
                 if ((trackable is Plane
@@ -479,21 +508,24 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 ) {
                     when (mode) {
                         Mode.VIKING -> {
-                            VikingObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
+                            VikingObject(this@MainActivity, addSessionAnchorFromAttachment(hit))
                         }
 
                         Mode.CANNON -> {
-                            CannonObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
+                            CannonObject(this@MainActivity, addSessionAnchorFromAttachment(hit))
                         }
 
                         Mode.TARGET -> {
-                            TargetObject(this@MainActivity,addSessionAnchorFromAttachment(hit))
+                            TargetObject(this@MainActivity, addSessionAnchorFromAttachment(hit))
                         }
                     }.let {
                         it.createOnGlThread(this@MainActivity)
-                        for(obj in sceneObjects){
-                            if (obj.boundingBox.intersectsWith(it.boundingBox)){
-                                messageSnackbarHelper.showToast(this,getString(R.string.objects_collided))
+                        for (obj in sceneObjects) {
+                            if (obj.boundingBox.intersectsWith(it.boundingBox)) {
+                                messageSnackbarHelper.showToast(
+                                    this,
+                                    getString(R.string.objects_collided)
+                                )
                                 return@let
                             }
                         }

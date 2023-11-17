@@ -401,7 +401,8 @@ open class ObjectRenderer(
         private const val VERTEX_SHADER_NAME = "shaders/object.vert"
         private const val FRAGMENT_SHADER_NAME = "shaders/object.frag"
         private const val COORDS_PER_VERTEX = 3
-        private val DEFAULT_COLOR = floatArrayOf(0f, 0f, 0f, 0f)
+        val DEFAULT_COLOR = floatArrayOf(0f, 0f, 0f, 0f)
+        val HIGHLIGHT_COLOR = floatArrayOf(1f, 1f, 0f, 0.5f)
 
         // Note: the last component must be zero to avoid applying the translational part of the matrix.
         private val LIGHT_DIRECTION = floatArrayOf(0.250f, 0.866f, 0.433f, 0.0f)
