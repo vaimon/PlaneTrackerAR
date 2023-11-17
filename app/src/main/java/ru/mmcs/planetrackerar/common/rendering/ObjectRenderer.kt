@@ -67,7 +67,8 @@ data class Material(
 /**
  * Renders an object loaded from an OBJ file in OpenGL.
  */
-class ObjectRenderer {
+open class ObjectRenderer(val objAssetName: String,
+                     val diffuseTextureAssetName: String) {
 
     /**
      * Blend mode.
@@ -142,9 +143,7 @@ class ObjectRenderer {
      */
     @Throws(IOException::class)
     fun createOnGlThread(
-        context: Context,
-        objAssetName: String,
-        diffuseTextureAssetName: String
+        context: Context
     ) {
         val vertexShader = ShaderUtil.loadGLShader(
             TAG,
@@ -452,3 +451,9 @@ class ObjectRenderer {
     }
 
 }
+
+class VikingObject(context: Context) : ObjectRenderer(context.getString(R.string.model_viking_obj), context.getString(R.string.model_viking_png))
+
+class CannonObject(context: Context) : ObjectRenderer(context.getString(R.string.model_cannon_obj), context.getString(R.string.model_cannon_png))
+
+class TargetObject(context: Context) : ObjectRenderer(context.getString(R.string.model_target_obj), context.getString(R.string.model_target_png))

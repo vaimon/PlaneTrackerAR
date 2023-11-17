@@ -89,9 +89,9 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private val pointCloudRenderer: PointCloudRenderer = PointCloudRenderer()
 
     // TODO: Declare ObjectRenderers and PlaneAttachments here
-    private val vikingObject = ObjectRenderer()
-    private val cannonObject = ObjectRenderer()
-    private val targetObject = ObjectRenderer()
+    private lateinit var vikingObject: VikingObject
+    private lateinit var cannonObject: CannonObject
+    private lateinit var targetObject: TargetObject
 
     private var vikingAttachment: PlaneAttachment? = null
     private var cannonAttachment: PlaneAttachment? = null
@@ -114,6 +114,9 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         displayRotationHelper = DisplayRotationHelper(this@MainActivity)
 
         installRequested = false
+        vikingObject = VikingObject(this)
+        cannonObject = CannonObject(this)
+        targetObject = TargetObject(this)
 
         setupTapDetector()
         setupSurfaceView()
@@ -281,12 +284,9 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
             // TODO - set up the objects
             // 1
-            vikingObject.createOnGlThread(this@MainActivity, getString(R.string.model_viking_obj), getString(
-                R.string.model_viking_png))
-            cannonObject.createOnGlThread(this@MainActivity, getString(R.string.model_cannon_obj), getString(
-                R.string.model_cannon_png))
-            targetObject.createOnGlThread(this@MainActivity, getString(R.string.model_target_obj), getString(
-                R.string.model_target_png))
+            vikingObject.createOnGlThread(this@MainActivity)
+            cannonObject.createOnGlThread(this@MainActivity)
+            targetObject.createOnGlThread(this@MainActivity)
 
             // 2
             targetObject.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f)
