@@ -26,4 +26,5 @@
   <string name="objects_collided">Objects should not collide</string>
   <string name="add">Add</string>
   <string name="edit">Edit</string>
+  <string name="choose_an_object_to_delete_first">Choose an object to delete first</string>
 </resources>

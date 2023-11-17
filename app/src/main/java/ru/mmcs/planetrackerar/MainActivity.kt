@@ -119,10 +119,28 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         setupTapDetector()
         setupSurfaceView()
         setupSpinner()
+        setupButtons()
+    }
+
+    private fun setupButtons() {
+        binding.btnDelete.setOnClickListener {
+            if (selectedObjectIndex != null) {
+                sceneObjects.removeAt(selectedObjectIndex!!)
+                selectedObjectIndex = null
+            } else {
+                messageSnackbarHelper.showToast(
+                    this@MainActivity,
+                    getString(R.string.choose_an_object_to_delete_first)
+                )
+            }
+        }
     }
 
     fun onRadioButtonClicked(view: View) {
         isEditMode = view.id == R.id.btnEdit
+        binding.spinnerObjectType.isEnabled = !isEditMode
+        binding.btnDelete.isEnabled = isEditMode
+        selectedObjectIndex = null
     }
 
     private fun setupSurfaceView() {
