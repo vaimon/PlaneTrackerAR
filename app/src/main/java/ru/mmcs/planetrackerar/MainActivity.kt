@@ -59,7 +59,6 @@ import com.google.ar.core.ArCoreApk.InstallStatus
 import com.google.ar.core.exceptions.*
 import ru.mmcs.planetrackerar.common.helpers.*
 import ru.mmcs.planetrackerar.common.rendering.*
-import ru.mmcs.planetrackerar.common.rendering.Mode
 import ru.mmcs.planetrackerar.databinding.ActivityMainBinding
 import java.io.IOException
 import java.util.concurrent.ArrayBlockingQueue
@@ -288,11 +287,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             cannonObject.createOnGlThread(this@MainActivity)
             targetObject.createOnGlThread(this@MainActivity)
 
-            // 2
-            targetObject.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f)
-            vikingObject.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f)
-            cannonObject.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f)
-
         } catch (e: IOException) {
             Log.e(TAG, getString(R.string.failed_to_read_asset), e)
         }
@@ -339,7 +333,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 drawObject(
                     vikingObject,
                     vikingAttachment,
-                    Mode.VIKING.scaleFactor,
                     projectionMatrix,
                     viewMatrix,
                     lightIntensity
@@ -348,7 +341,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 drawObject(
                     cannonObject,
                     cannonAttachment,
-                    Mode.CANNON.scaleFactor,
                     projectionMatrix,
                     viewMatrix,
                     lightIntensity
@@ -357,7 +349,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 drawObject(
                     targetObject,
                     targetAttachment,
-                    Mode.TARGET.scaleFactor,
                     projectionMatrix,
                     viewMatrix,
                     lightIntensity
@@ -382,7 +373,6 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private fun drawObject(
         objectRenderer: ObjectRenderer,
         planeAttachment: PlaneAttachment?,
-        scaleFactor: Float,
         projectionMatrix: FloatArray,
         viewMatrix: FloatArray,
         lightIntensity: FloatArray
@@ -391,7 +381,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             planeAttachment.pose.toMatrix(anchorMatrix, 0)
 
             // Update and draw the model
-            objectRenderer.updateModelMatrix(anchorMatrix, scaleFactor)
+            objectRenderer.updateModelMatrix(anchorMatrix)
             objectRenderer.draw(viewMatrix, projectionMatrix, lightIntensity)
         }
     }
@@ -513,7 +503,7 @@ class MainActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private fun addSessionAnchorFromAttachment(
         previousAttachment: PlaneAttachment?,
         hit: HitResult
-    ): PlaneAttachment? {
+    ): PlaneAttachment {
         // 1
         previousAttachment?.anchor?.detach()
 

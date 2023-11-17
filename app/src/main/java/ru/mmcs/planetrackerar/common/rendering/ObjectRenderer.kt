@@ -59,16 +59,21 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 data class Material(
-    val ambient: Float = 0.3f,
-    val diffuse: Float = 1.0f,
-    val specular: Float = 1.0f,
-    val specularPower: Float = 6.0f
+    var ambient: Float = 0.3f,
+    var diffuse: Float = 1.0f,
+    var specular: Float = 1.0f,
+    var specularPower: Float = 6.0f
 )
+
 /**
  * Renders an object loaded from an OBJ file in OpenGL.
  */
-open class ObjectRenderer(val objAssetName: String,
-                     val diffuseTextureAssetName: String) {
+open class ObjectRenderer(
+    private val objAssetName: String,
+    private val diffuseTextureAssetName: String,
+    private val scaleFactor: Float = 1f,
+    private val material: Material = Material()
+) {
 
     /**
      * Blend mode.
@@ -80,6 +85,7 @@ open class ObjectRenderer(val objAssetName: String,
          * Multiplies the destination color by the source alpha.
          */
         Shadow,
+
         /**
          * Normal alpha blending.
          */
@@ -128,18 +134,10 @@ open class ObjectRenderer(val objAssetName: String,
     private val modelViewMatrix = FloatArray(16)
     private val modelViewProjectionMatrix = FloatArray(16)
 
-    // Set some default material properties to use for lighting.
-    private var ambient = 0.3f
-    private var diffuse = 1.0f
-    private var specular = 1.0f
-    private var specularPower = 6.0f
-
     /**
      * Creates and initializes OpenGL resources needed for rendering the model.
      *
      * @param context                 Context for loading the shader and below-named model and texture assets.
-     * @param objAssetName            Name of the OBJ file containing the model geometry.
-     * @param diffuseTextureAssetName Name of the PNG file containing the diffuse texture map.
      */
     @Throws(IOException::class)
     fun createOnGlThread(
@@ -271,34 +269,13 @@ open class ObjectRenderer(val objAssetName: String,
      * @param scaleFactor A separate scaling factor to apply before the `modelMatrix`.
      * @see Matrix
      */
-    fun updateModelMatrix(modelMatrix: FloatArray?, scaleFactor: Float) {
+    fun updateModelMatrix(modelMatrix: FloatArray?) {
         val scaleMatrix = FloatArray(16)
         Matrix.setIdentityM(scaleMatrix, 0)
         scaleMatrix[0] = scaleFactor
         scaleMatrix[5] = scaleFactor
         scaleMatrix[10] = scaleFactor
         Matrix.multiplyMM(this.modelMatrix, 0, modelMatrix, 0, scaleMatrix, 0)
-    }
-
-    /**
-     * Sets the surface characteristics of the rendered model.
-     *
-     * @param ambient       Intensity of non-directional surface illumination.
-     * @param diffuse       Diffuse (matte) surface reflectivity.
-     * @param specular      Specular (shiny) surface reflectivity.
-     * @param specularPower Surface shininess. Larger values result in a smaller, sharper specular
-     * highlight.
-     */
-    fun setMaterialProperties(
-        ambient: Float,
-        diffuse: Float,
-        specular: Float,
-        specularPower: Float
-    ) {
-        this.ambient = ambient
-        this.diffuse = diffuse
-        this.specular = specular
-        this.specularPower = specularPower
     }
 
     /**
@@ -356,7 +333,7 @@ open class ObjectRenderer(val objAssetName: String,
         GLES20.glUniform4fv(colorUniform, 1, objColor, 0)
 
         // Set the object material properties.
-        GLES20.glUniform4f(materialParametersUniform, ambient, diffuse, specular, specularPower)
+        GLES20.glUniform4f(materialParametersUniform, material.ambient, material.diffuse, material.specular, material.specularPower)
 
         // Attach the object texture.
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -406,6 +383,7 @@ open class ObjectRenderer(val objAssetName: String,
             when (blendMode) {
                 BlendMode.Shadow ->  // Multiplicative blending function for Shadow.
                     GLES20.glBlendFunc(GLES20.GL_ZERO, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+
                 BlendMode.Grid ->  // Grid, additive blending function.
                     GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
 
@@ -437,6 +415,7 @@ open class ObjectRenderer(val objAssetName: String,
         private const val FRAGMENT_SHADER_NAME = "shaders/object.frag"
         private const val COORDS_PER_VERTEX = 3
         private val DEFAULT_COLOR = floatArrayOf(0f, 0f, 0f, 0f)
+
         // Note: the last component must be zero to avoid applying the translational part of the matrix.
         private val LIGHT_DIRECTION = floatArrayOf(0.250f, 0.866f, 0.433f, 0.0f)
 
@@ -452,8 +431,20 @@ open class ObjectRenderer(val objAssetName: String,
 
 }
 
-class VikingObject(context: Context) : ObjectRenderer(context.getString(R.string.model_viking_obj), context.getString(R.string.model_viking_png))
+class VikingObject(context: Context) : ObjectRenderer(
+    context.getString(R.string.model_viking_obj),
+    context.getString(R.string.model_viking_png),
+    material = Material(specular = .5f)
+)
 
-class CannonObject(context: Context) : ObjectRenderer(context.getString(R.string.model_cannon_obj), context.getString(R.string.model_cannon_png))
+class CannonObject(context: Context) : ObjectRenderer(
+    context.getString(R.string.model_cannon_obj),
+    context.getString(R.string.model_cannon_png),
+    scaleFactor = .2f
+)
 
-class TargetObject(context: Context) : ObjectRenderer(context.getString(R.string.model_target_obj), context.getString(R.string.model_target_png))
+class TargetObject(context: Context) : ObjectRenderer(
+    context.getString(R.string.model_target_obj),
+    context.getString(R.string.model_target_png),
+    scaleFactor = .5f
+)
